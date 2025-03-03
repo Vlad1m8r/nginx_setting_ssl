@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: vlad1m8r/mytestnginx:latest
+    container_name: nginx-reverse
+    ports:
+      - "80:80"
+      - "443:443"  # Прокси на HTTPS
+    depends_on:
+      - front
+    networks:
+      - app-network
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt  # Монтирование директории хоста nginx тут имеет доступ к сертам на хосте
+      - ./certbot/www:/var/www/certbot   # Монтирование директории хоста nginx тут имеет доступ к challenge-папки
+    environment:
+      - NGINX_HOST=weyousport.ru  # мой домен для Let's Encrypt
+      - NGINX_EMAIL=vlad1m8rgoncharuk@gmail.com  # мой email для Let's Encrypt
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot  # Монтирование директории хоста certbot сохраняет в ./certbot/www challenge-папки
+      - ./certbot/conf:/etc/letsencrypt  # Монтирование директории хоста certbot сохраняет в ./certbot/conf созданные серты (которые потом юзает nginx)
+      # директория ./certbot/conf (и др монтируемые) создается на хосте в той же директории в которой находится и запущен файл docker-compose 
+    networks:
+      - app-network
+    entrypoint: "/bin/sh -c 'while :; do sleep 6h; done'"  # Держим контейнер живым
+
+  front:
+    image: vlad1m8r/tgwasport:latest
+    container_name: front
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
